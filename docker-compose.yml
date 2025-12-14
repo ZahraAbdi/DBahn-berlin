@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: dbahn-postgres
+    environment:
+      POSTGRES_DB: DBahn-berlin
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin4321
+    ports:
+      - "5433:5432"
+    volumes: 
+      - postgres_data:/var/lib/postgresql/data
+      - ./star_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - dbahn-network
+
+  etl: 
+    build: .
+    container_name: dbahn-etl
+    depends_on:
+      - postgres
+    volumes:
+      - ./DBahn-berlin:/app/DBahn-berlin
+      - ./:/app
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: DBahn-berlin
+      DB_USER: admin
+      DB_PASSWORD: admin4321
+    networks:
+      - dbahn-network
+
+volumes:
+  postgres_data: 
+
+networks:
+  dbahn-network:
+    driver: bridge
