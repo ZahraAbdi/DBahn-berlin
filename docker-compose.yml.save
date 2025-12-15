@@ -12,7 +12,7 @@ services:
       - "5433:5432"
     volumes: 
       - postgres_data:/var/lib/postgresql/data
-      - ./star_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./star_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     networks:
       - dbahn-network
 
@@ -22,8 +22,8 @@ services:
     depends_on:
       - postgres
     volumes:
-      - .:/app
       - ./DBahn-berlin:/app/DBahn-berlin
+      - ./:/app
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -32,8 +32,6 @@ services:
       DB_PASSWORD: admin4321
     networks:
       - dbahn-network
-    
-    command: tail -f /dev/null  
 
 volumes:
   postgres_data: 
