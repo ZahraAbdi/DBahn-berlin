@@ -86,7 +86,8 @@ CREATE TABLE dim_train (
     operator_name VARCHAR(255),
     train_category VARCHAR(50),
     train_category_desc VARCHAR(255),
-    train_class INTEGER,
+    train_class VARCHAR(10),           -- << must be string for 'S', 'N', etc
+    train_class_desc VARCHAR(255),     -- << add this if you want the desc field
     train_type VARCHAR(50),
     train_type_desc VARCHAR(255)
 );
