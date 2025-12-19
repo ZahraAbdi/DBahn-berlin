@@ -16,7 +16,7 @@ def parse_db_time(ts):
     # 10 digits: YYMMDDHHMM
     if len(ts) == 10:
         year = int(ts[0:2])
-        year += 2000 if year < 60 else 1900  # or use fixed 2000s if your data is only recent!
+        year += 2000 if year < 60 else 1900  
         month = int(ts[2:4])
         day = int(ts[4:6])
         hour = int(ts[6:8])
@@ -40,7 +40,7 @@ def parse_db_time(ts):
 
 def normalize_station_name(name):
     name = name.strip().lower()
-    # Manual German character replacements (before anything else)
+    ## German Special characters
     name = name.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
     name = name.replace("ß", "ss")
     # Hyphens/underscores to space
@@ -175,7 +175,7 @@ def load_fact_train(conn, data_folder):
                 file_path = os.path.join(hour_path, filename)
                 print(f"Processing {file_path}...")
                 try:
-                    # --- FIX: Get station_key from filename directly ---
+                    # Get the station_key from the name of file or station name inside the file
                     
                     tree = ET.parse(file_path)
                     root = tree.getroot()
@@ -185,19 +185,11 @@ def load_fact_train(conn, data_folder):
                     if station_key is None:
                         print(f"Station not found: XML='{xml_station_name}', File='{file_station_name}'")
                         continue
-                    #station_key = get_station_key_from_name(conn, station_name)
-                    # normalized_station_name = normalize_station_name(station_name)
-                    # station_key = station_key_map.get(normalized_station_name)
-                    # if station_key is None:
-                    #     print(f"Station '{station_name}' (normalized: '{normalized_station_name}') not found in dim_station!")
-                    #     continue
-                    # if station_key is None:
-                    #     print(f" Station '{station_name}' not found in dim_station (from file {filename}).")
-                    #     continue
+                   
 
                     for movement in root.findall('.//s'):
 
-                        print("dataaaaaaaa:")
+                        #print("dataaaaaaaa:")
                         
                         train_elem = movement.find('tl')
                         if train_elem is None:
@@ -236,7 +228,7 @@ def load_fact_train(conn, data_folder):
                             if None in (station_key, train_key, time_key):
                                 continue
 
-                            print("CORRECT!")
+                            #print("CORRECT!")
                             cursor = conn.cursor()
                             cursor.execute("""
                             INSERT INTO fact_train_movement (
@@ -253,85 +245,3 @@ def load_fact_train(conn, data_folder):
                 except Exception as e:
                     print(f"Error parsing {file_path}: {e}")
                     conn.rollback()
-# def load_fact_train(conn, data_folder):
-#     station_json_path = os.path.join(data_folder, 'station_data.json')
-#     # station_name_to_eva = build_station_name_to_eva(station_json_path)
-
-#     timetables_dir = os.path.join(data_folder, 'timetables')
-#     for period_folder in os.listdir(timetables_dir):
-#         period_path = os.path.join(timetables_dir, period_folder)
-#         if not os.path.isdir(period_path):
-#             continue
-#         for hour_folder in os.listdir(period_path):
-#             hour_path = os.path.join(period_path, hour_folder)
-#             if not os.path.isdir(hour_path):
-#                 continue
-#             for filename in os.listdir(hour_path):
-#                 print(f"filename :{filename}")
-#                 if not filename.endswith('.xml'):
-#                     continue
-#                 file_path = os.path.join(hour_path, filename)
-#                 print(f"Processing {file_path}...")
-#                 try:
-#                     tree = ET.parse(file_path)
-#                     root = tree.getroot()
-#                     eva_number = get_eva_number(file_path, root, station_name_to_eva)
-#                     if eva_number is None:
-#                         continue
-#                     station_key = get_station_key(conn, eva_number)
-#                     if station_key is None:
-#                         print(f" Station EVA {eva_number} not found in dim_station.")
-#                         continue
-                 
-#                     for movement in root.findall('.//s'):
-#                         # Get station_key from earlier logic (it is the same for all events in this <s> group)
-#                         # Get train_elem from movement
-#                         train_elem = movement.find('tl')
-#                         if train_elem is None:
-#                             continue
-                        
-#                         # Build train_id and get train_key (same for all events under this <s>)
-#                         train_category = train_elem.get('c')
-#                         train_number = train_elem.get('n')
-#                         operator_code = train_elem.get('o')
-#                         # ... normalization ...
-#                         train_id = f"{train_category}_{train_number}_{operator_code}" if operator_code else f"{train_category}_{train_number}_UNK"
-#                         train_data = {
-#                                 'train_id': train_id,
-#                                 'train_number': train_number,
-#                                 'operator_code': operator_code,
-#                                 'operator_name': None,  # you may add mapping logic!
-#                                 'train_category': train_category,
-#                                 'train_category_desc': None,
-#                                 'train_class': train_elem.get('f'),
-#                                 'train_type': train_elem.get('t'),
-#                                 'train_type_desc': None
-#                         }
-#                         train_key = get_train_key(conn, train_data)
-
-#                         # Now, iterate over each event (ar, dp, etc) inside <s>:
-#                         for event_elem in movement:
-#                             if event_elem.tag == "tl":
-#                                 continue  # skip
-#                             fact_values = parse_movement_event(event_elem)
-#                             planned_time = fact_values[0]
-#                             print(f"planned_time: {planned_time}")
-#                             time_key = get_or_create_time_key(conn, planned_time) if planned_time else None
-#                             if None in (station_key, train_key, time_key):
-#                                 continue
-#                             # Insert row:
-#                             cursor = conn.cursor()
-#                             cursor.execute("""
-#                             INSERT INTO fact_train_movement (
-#                                 station_key, train_key, time_key,
-#                                 event_type, event_status,
-#                                 planned_time, actual_time,
-#                                 planned_platform, actual_platform,
-#                                 delay_minutes, is_cancelled, cancellation_time, is_hidden, has_disruption,
-#                                 distance_change, line_number, planned_path, actual_path, planned_destination, transition_reference
-#                             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-#                             """, (station_key, train_key, time_key) + fact_values)
-#                             conn.commit()
-#                             cursor.close()
-#                 except Exception as e:
-#                     print(f"Error parsing {file_path}: {e}")

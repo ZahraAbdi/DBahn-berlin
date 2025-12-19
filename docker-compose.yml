@@ -12,7 +12,7 @@ services:
       - "5433:5432"
     volumes: 
       - postgres_data:/var/lib/postgresql/data
-      - ./star_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/star_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     networks:
       - dbahn-network
 

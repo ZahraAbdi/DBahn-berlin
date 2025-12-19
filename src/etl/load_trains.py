@@ -9,7 +9,7 @@ OPERATOR_CODE_TO_NAME = {
     "800165": "DB Regio AG Nordost",
     "SNCF": "French National Railways",
     "BVG": "Berliner Verkehrsbetriebe",
-    # Add more seen in your DEBUG output!
+
 }
 
 TRAIN_CATEGORY_DESC = {
@@ -35,8 +35,7 @@ TRAIN_TYPE_DESC = {
     "": None,
     None: None
 }
-operator_code = '08'
-print(f"operator_name:{OPERATOR_CODE_TO_NAME.get(operator_code)}" )
+
 
 def get_train_key(conn, train_data):
     cursor = conn.cursor()
@@ -117,9 +116,9 @@ def load_all_trains(conn, data_folder):
                             'train_type': train_type,
                             'train_type_desc': TRAIN_TYPE_DESC.get(train_type)
                         }
-                        # -- Debug print to diagnose mapping issues --
-                        print("DEBUG TRAIN:", train_data)
-                        # -- Save only unique trains --
+                        
+                        # print("DEBUG TRAIN:", train_data)
+                        
                         if train_id not in loaded:
                             get_train_key(conn, train_data)
                             loaded.add(train_id)
