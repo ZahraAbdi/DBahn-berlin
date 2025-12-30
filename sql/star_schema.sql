@@ -1,7 +1,7 @@
 -- Star Schema for Deutsche Bahn Train Movement Analysis
 
 -- Drop tables in correct order (fact table first, then dimensions)
-DROP TABLE IF EXISTS bridge_movement_messages CASCADE;
+-- DROP TABLE IF EXISTS bridge_movement_messages CASCADE;
 DROP TABLE IF EXISTS fact_train_movement CASCADE;
 DROP TABLE IF EXISTS dim_message CASCADE;
 DROP TABLE IF EXISTS dim_time CASCADE;
@@ -114,19 +114,18 @@ CREATE INDEX idx_time_timestamp ON dim_time(timestamp);
 
 -- Message dimension
 -- stores disruption and delay messages from XML
-CREATE TABLE dim_message (
-    message_key SERIAL PRIMARY KEY,
-    message_id VARCHAR(100),
-    message_type VARCHAR(100),
-    message_category VARCHAR(100),
-    message_code VARCHAR(100),
-    priority INTEGER,
-    timestamp TIMESTAMP,
-    timestamp_tts VARCHAR(50),
-    valid_from TIMESTAMP,
-    valid_to TIMESTAMP
-);
-
+-- CREATE TABLE dim_message (
+--     message_key SERIAL PRIMARY KEY,
+--     message_id VARCHAR(100),
+--     message_type VARCHAR(100),
+--     message_category VARCHAR(100),
+--     message_code VARCHAR(100),
+--     priority INTEGER,
+--     timestamp TIMESTAMP,
+--     timestamp_tts VARCHAR(50),
+--     valid_from TIMESTAMP,
+--     valid_to TIMESTAMP
+-- );
 
 
 
@@ -167,26 +166,39 @@ CREATE TABLE fact_train_movement (
     planned_path TEXT,
     actual_path TEXT,
     planned_destination VARCHAR(255),
-    transition_reference VARCHAR(100)
+    sid VARCHAR(100)
 );
 
-CREATE TABLE bridge_movement_messages (
-    movement_id INTEGER NOT NULL,
-    message_key INTEGER NOT NULL,
-    message_sequence SMALLINT NOT NULL,
+-- CREATE TABLE bridge_movement_messages (
+--     movement_id INTEGER NOT NULL,
+--     message_key INTEGER NOT NULL,
+--     message_sequence SMALLINT NOT NULL,
     
-    PRIMARY KEY (movement_id, message_key),
+--     PRIMARY KEY (movement_id, message_key),
     
-    CONSTRAINT fk_movement FOREIGN KEY (movement_id) 
-        REFERENCES fact_train_movement(movement_id) ON DELETE CASCADE,
-    CONSTRAINT fk_message FOREIGN KEY (message_key) 
-        REFERENCES dim_message(message_key) ON DELETE CASCADE
+--     CONSTRAINT fk_movement FOREIGN KEY (movement_id) 
+--         REFERENCES fact_train_movement(movement_id) ON DELETE CASCADE,
+--     CONSTRAINT fk_message FOREIGN KEY (message_key) 
+--         REFERENCES dim_message(message_key) ON DELETE CASCADE
+-- );
+
+CREATE TABLE timetable_changes (
+    sid TEXT,
+    event_type TEXT,
+    actual_time TIMESTAMP,
+    actual_platform TEXT,
+    actual_path TEXT,
+    is_cancelled BOOLEAN,
+    cancellation_time TIMESTAMP,
+    has_disruption BOOLEAN,
+    PRIMARY KEY (sid, event_type)
 );
 
+CREATE INDEX IF NOT EXISTS idx_sid_event ON timetable_changes(sid, event_type);
 
 
-CREATE INDEX idx_bridge_movement ON bridge_movement_messages(movement_id);
-CREATE INDEX idx_bridge_message ON bridge_movement_messages(message_key);
+-- CREATE INDEX idx_bridge_movement ON bridge_movement_messages(movement_id);
+-- CREATE INDEX idx_bridge_message ON bridge_movement_messages(message_key);
 
 -- indexes for better query performance
 CREATE INDEX idx_fact_station ON fact_train_movement(station_key);

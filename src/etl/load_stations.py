@@ -120,8 +120,6 @@ def load_stations(conn, json_file):
         
         loaded += 1
 
-        if loaded % 100 == 0:  # print every 100 stations
-            print(f"Loaded {loaded} stations so far...")
 
     conn.commit()
     cursor.close()

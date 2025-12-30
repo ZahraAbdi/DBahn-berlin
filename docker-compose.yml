@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin4321
     ports:
-      - "5433:5432"
+      - "6543:5432"
     volumes: 
       - postgres_data:/var/lib/postgresql/data
       - ./sql/star_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -23,7 +23,8 @@ services:
       - postgres
     volumes:
       - .:/app
-      - ./DBahn-berlin:/app/DBahn-berlin
+      #- ./DBahn-berlin:/app/DBahn-berlin
+      - ./data/raw/DBahn-berlin:/app/data/raw/DBahn-berlin
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -33,7 +34,8 @@ services:
     networks:
       - dbahn-network
     
-    command: tail -f /dev/null  
+    command: python -u src/main.py
+    restart: on-failure
 
 volumes:
   postgres_data: 
@@ -41,3 +43,4 @@ volumes:
 networks:
   dbahn-network:
     driver: bridge
+    

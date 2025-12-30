@@ -39,26 +39,39 @@ TRAIN_TYPE_DESC = {
 
 def get_train_key(conn, train_data):
     cursor = conn.cursor()
+
     train_id = train_data.get('train_id')
+
     if train_id:
-        cursor.execute("SELECT train_key FROM dim_train WHERE train_id = %s", (train_id,))
+        cursor.execute(
+            "SELECT train_key FROM dim_train WHERE train_id = %s",
+            (train_id,)
+        )
         result = cursor.fetchone()
         if result:
             cursor.close()
             return result[0]
+
     cursor.execute("""
-    INSERT INTO dim_train (
-        train_id, train_number, operator_code, operator_name,
-        train_category, train_category_desc, train_class, train_class_desc,
-        train_type, train_type_desc
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    RETURNING train_key
-""", (
-    train_data['train_id'], train_data['train_number'], train_data['operator_code'],
-    train_data['operator_name'], train_data['train_category'], train_data['train_category_desc'],
-    train_data['train_class'], train_data['train_class_desc'],
-    train_data['train_type'], train_data['train_type_desc']
-))
+        INSERT INTO dim_train (
+            train_id, train_number, operator_code, operator_name,
+            train_category, train_category_desc, train_class, train_class_desc,
+            train_type, train_type_desc
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING train_key
+    """, (
+        train_data['train_id'],
+        train_data['train_number'],
+        train_data['operator_code'],
+        train_data['operator_name'],
+        train_data['train_category'],
+        train_data['train_category_desc'],
+        train_data['train_class'],
+        train_data['train_class_desc'],
+        train_data['train_type'],
+        train_data['train_type_desc']
+    ))
+
     train_key = cursor.fetchone()[0]
     conn.commit()
     cursor.close()

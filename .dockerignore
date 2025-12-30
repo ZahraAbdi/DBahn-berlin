@@ -1,0 +1,20 @@
+touch .dockerignore
+# Data folders
+data/
+*.tar.gz
+*.zip
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Git
+.git/
+.gitignore
+
+# Virtual env
+venv/
+.env
+
+# OS junk
+.DS_Store
