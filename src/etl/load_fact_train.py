@@ -142,8 +142,13 @@ def load_changes_map_for_period(changes_week_dir, hour_prefix):
                             actual_time = parse_db_time_from_str(ev.get("ct"))
                             actual_platform = ev.get("cp") or ev.get("l")
                             actual_path = ev.get("cpth")
-                            is_cancelled = ev.get("cs") == "1" if ev.get("cncl") is not None else False
+                            
+                            is_cancelled = ev.get("cs", "").strip().lower() == "c"
+                            print(f"is_cancelled: {is_cancelled}")
+                            clt = ev.get("clt")
+                            print(f"clt: {clt}")
                             cancellation_time =  parse_db_time(ev.get("clt"))
+                            print(f"cancellation_time: {cancellation_time}")
                             has_disruption = ev.get("dis") == "1" if ev.get("dis") is not None else False
                             
                             distance_change = None
@@ -205,6 +210,7 @@ def insert_fact_train_movement_batch(conn, rows):
                 is_cancelled, cancellation_time, is_hidden, has_disruption,
                 distance_change, line_number, planned_path, actual_path,
                 planned_destination, sid)
+                        
             VALUES (
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
@@ -313,10 +319,8 @@ def load_fact_train(conn, data_folder):
                 try:
                     tree = ET.parse(file_path)
                     root = tree.getroot()
-                    
 
                     ### get the station info from the station table 
-                
                     xml_station = root.get("station")
                     filename_station = filename.replace("_timetable.xml", "").replace("_", " ")
                     station_key, station_name = get_station_key(station_key_maps, xml_station, filename_station)
