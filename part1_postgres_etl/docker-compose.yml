@@ -30,7 +30,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - ./data/raw/DBahn-berlin:/app/data/raw/DBahn-berlin
+      - ../data/raw/DBahn-berlin:/app/data/raw/DBahn-berlin
     environment:
       DB_HOST: dbahn-postgres   # must match container_name
       DB_PORT: 5432
