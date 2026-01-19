@@ -38,5 +38,5 @@ cd ./part3_spark_etl
 python3 etl_main.py
 
 ## task 3.2
-
+cd ./part3_spark_etl
 python3 etl_task_3.2.py

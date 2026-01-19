@@ -8,7 +8,7 @@ spark = (SparkSession.builder
 )
 
 # load timetable and timetable_channges data ##########
-timetables_path = '../data/processed/timetables.parque'
+timetables_path = '../data/processed/timetables.parquet'
 timetables = spark.read.parquet(timetables_path)
 
 timetable_changes_path = '../data/processed/changes.parquet'
@@ -22,13 +22,14 @@ joined_data = timetables.join(changes, on = ['sid', 'station', 'event_type'], ho
 
 station_data = joined_data.filter(col('station')== station)
 
-filtered_data = station_data.filter(col('planned_time').isNotNull & col('canellation_time').isNotNull())
+filtered_data = station_data.filter(
+    (col('planned_time').isNotNull()) & col('cancellation_time').isNotNull())
 
 #######################################
 # step 1: calculate delay by using above filtered data
 delay_data = filtered_data.withColumn(
                       "delay_minutes", 
-                      (unix_timestamp("cancellation_time") - unix_timestamp("planned_time")) / 60)   
+                      (unix_timestamp("changed_time") - unix_timestamp("planned_time")) / 60)   
 
 # step 2: extract the date part of the dely_data
 delay_daily_data = delay_data.withColumn("date", to_date("planned_time"))
@@ -41,5 +42,6 @@ daily_average = delay_daily_data.groupBy("date")\
 daily_average.show()
 
 ## step 4: compute delay on over days
-avg = daily_average.agg(avg("delay_min")).collect()[0][0]
-print(f"Average delay: {avg} minutes")
+#avg = daily_average.agg(avg("delay_minutes")).collect()[0][0]
+overall_avg = daily_average.agg(avg("avg_delay")).collect()[0][0]
+print(f"Average delay: {overall_avg} minutes")
