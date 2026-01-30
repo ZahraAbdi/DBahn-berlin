@@ -8,15 +8,17 @@ spark = (SparkSession.builder
 )
 
 # load timetable and timetable_channges data ##########
-timetables_path = '../data/processed/timetables.parquet'
+timetables_path = './timetables.parquet'
 timetables = spark.read.parquet(timetables_path)
 
-timetable_changes_path = '../data/processed/changes.parquet'
+timetable_changes_path = './timetable_changes.parquet'
 changes = spark.read.parquet(timetable_changes_path)
 #########################################################
  ## get the planned time and canclled time of the station 
-station = "Berlin Anhalter Bf"
-
+#station = "Berlin Anhalter Bf"
+raw_input = input("Enter station name [default: Berlin Anhalter Bf]: ")
+station = raw_input.strip() if raw_input.strip() else "Berlin Anhalter Bf"
+print(f"Calculating average daily delay for station: {station}")
 # join two data sets and filter them
 joined_data = timetables.join(changes, on = ['sid', 'station', 'event_type'], how= 'inner')
 

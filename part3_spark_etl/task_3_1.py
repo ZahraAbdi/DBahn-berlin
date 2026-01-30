@@ -4,7 +4,9 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 import xml.etree.ElementTree as ET
 from datetime import datetime
-
+import tarfile
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 def setup_spark():
     spark = SparkSession.builder \
@@ -28,6 +30,39 @@ def convert_time(timestr):
     year = year +2000
 
     return datetime(year, month, day, hour, minutes)
+
+
+# def unzip_folders(parent_dir):
+#     print(f"parent_dir: {parent_dir}")
+#     for name in os.listdir(parent_dir):
+#         if not name.endswith(".tar.gz"):
+#             continue
+
+#         tar_path = os.path.join(parent_dir, name)
+#         target_dir = os.path.join(parent_dir, name[:-7])
+
+#         if os.path.exists(target_dir):
+#             print(f"unzipped before: {name}")
+#             continue
+
+#         print(f"unzipping floder:  {name}")
+#         with tarfile.open(tar_path, "r:gz") as tar:
+#             tar.extractall(target_dir)
+
+def unzip_file(tar_path, target_dir):
+    if os.path.exists(target_dir):
+        print(f"Already unzipped: {os.path.basename(tar_path)}")
+        return
+    print(f"Unzipping: {os.path.basename(tar_path)}")
+    with tarfile.open(tar_path, "r:gz") as tar:
+        tar.extractall(target_dir)
+
+def unzip_folders_parallel(parent_dir, max_workers=4):
+    tar_files = [f for f in os.listdir(parent_dir) if f.endswith(".tar.gz")]
+    tasks = [(os.path.join(parent_dir, f), os.path.join(parent_dir, f[:-7])) for f in tar_files]
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor.map(lambda p: unzip_file(*p), tasks)
 
 
 def extract_timetable(path):
@@ -156,7 +191,7 @@ def find_weeks_periods(base_path ):
 
 
 ## extraxt .xml files in timetable or timetable_changes 
-def fine_xml_files(weeks , tima_base_path, time_change_path):
+def find_xml_files(weeks , tima_base_path, time_change_path):
     
     tt_files = []
     chg_files = []
@@ -176,82 +211,91 @@ def fine_xml_files(weeks , tima_base_path, time_change_path):
     print("total:", len(tt_files), len(chg_files))
     return tt_files, chg_files
 
-## process timetable files in bactches and  write data- for getting better speed we used batches
-def process_time_files(spark, timetable_files, time_schema, batch_size):
-    
+
+def process_time_files_parallel(spark, timetable_files, time_schema, batch_size, max_workers=8):
     all_tt_data = []
-    for i, f in enumerate(timetable_files):
-        all_tt_data.extend(extract_timetable(f))
-            
-        if i % batch_size == 0 and i > 0:
-            print(f"processed {i} files")
-            ## cretae data frame frame using schmea 
-            df = spark.createDataFrame(all_tt_data, time_schema)
-            if i == batch_size: 
-                df.write.mode("overwrite").parquet("../data/processed/timetables.parquet")
-            else:
-                df.write.mode("append").parquet("../data/processed/timetables.parquet")
-            
-            ## clear memory
-            all_tt_data = [] 
-    # save remaining
-    if all_tt_data: 
+
+    # function to parse a single file
+    def parse_file(f):
+        return extract_timetable(f)
+
+    for i in range(0, len(timetable_files), batch_size):
+        batch_files = timetable_files[i:i+batch_size]
+
+        # Parse all files in the batch in parallel using threads
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            batch_results = list(executor.map(parse_file, batch_files))
+
+        # flatten the results
+        for r in batch_results:
+            all_tt_data.extend(r)
+
+        print(f"processed {i + len(batch_files)} files")
+
+        # write batch to parquet
         df = spark.createDataFrame(all_tt_data, time_schema)
-        df.write.mode("append").parquet("../data/processed/timetables.parquet")
-    
+        mode = "overwrite" if i == 0 else "append"
+        df.write.mode(mode).parquet("./timetables.parquet")
+        all_tt_data = []  # clear memory
 
-## process timetable_change files in bactches and  write data- used batches for better speed
-def process_change_files(spark, change_files, change_schema, batch_size ):
-     # process timetable_changes files 
+def process_change_files_parallel(spark, change_files, change_schema, batch_size, max_workers=8):
     all_chg_data = []
-    #p#rint("processing changes...")
-    for i, f in enumerate(change_files):
 
-        all_chg_data.extend(extract_changes(f))
+    def parse_file(f):
+        return extract_changes(f)
 
-        if i % batch_size == 0 and i > 0:
-            print(f"processed {i} files")
-            df = spark.createDataFrame(all_chg_data, change_schema)
+    for i in range(0, len(change_files), batch_size):
+        batch_files = change_files[i:i+batch_size]
 
-            if i == batch_size:
-                df.write. mode("overwrite").parquet("../data/processed/changes.parquet")
-            else:
-                df.write.mode("append").parquet("../data/processed/changes.parquet")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            batch_results = list(executor.map(parse_file, batch_files))
 
-            # clear memory     
-            all_chg_data = []
+        for r in batch_results:
+            all_chg_data.extend(r)
 
-    if all_chg_data: 
+        print(f"processed {i + len(batch_files)} files")
+
         df = spark.createDataFrame(all_chg_data, change_schema)
-        df.write.mode("append").parquet("../data/processed/changes.parquet")
-
+        mode = "overwrite" if i == 0 else "append"
+        df.write.mode(mode).parquet("./timetable_changes.parquet")
+        all_chg_data = []
 
 
 
 def main():
-
     spark= setup_spark()
     ## deine schemas
     time_schema, change_schema = define_schema()
+
+    tt_tar = "./timetables.tar.gz"
+    chg_tar = "./timetable_changes.tar.gz"
  
     weeks = []
-    base_path = "../data/raw/DBahn-berlin"
-    tt_base = f"{base_path}/timetables"
-    chg_base = f"{base_path}/timetable_changes"
+    tt_base = "./timetables"
+    chg_base = "./timetable_changes"
+
+
+    path = "./"
+    print("Unzipping raw data")
+    print("time_table: ")
+
+    unzip_folders_parallel(os.path.join(path, "timetables"), max_workers=4)
+    unzip_folders_parallel(os.path.join(path, "timetable_changes"), max_workers=4)
 
     weeks = find_weeks_periods(tt_base)
-    time_files , change_files = fine_xml_files(weeks, tt_base, chg_base )
+    time_files , change_files = find_xml_files(weeks, tt_base, chg_base )
 
     # process timetables data in batch size of 1000 since I faced with memory full issue
     batch_size = 1000
 
     ## after getting all data of time table, want to process them 
-    process_time_files(spark, time_files, time_schema, batch_size)
-    process_change_files(spark, change_files, change_schema, batch_size )
+    process_time_files_parallel(spark, time_files, time_schema, batch_size, max_workers=4)
+    process_change_files_parallel(spark, change_files, change_schema, batch_size, max_workers=4)
+
 
     # check
-    tt_df = spark.read.parquet("../data/processed/timetables.parquet")
-    chg_df = spark.read.parquet("../data/processed/changes.parquet") 
+    tt_df = spark.read.parquet("./timetables.parquet")
+    chg_df = spark.read.parquet("./timetable_changes.parquet") 
 
     print("finished successfully:", tt_df.count(), chg_df.count())
 
