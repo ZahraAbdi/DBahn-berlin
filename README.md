@@ -1,53 +1,141 @@
-# DBahn Train Movement ETL Pipeline
+# Berlin Public Transport Data Analysis
 
-This project contains ETL pipelines for Deutsche Bahn train movement data. 
-It extracts, transforms, and loads train data into a database or processes it with Spark.
+A data engineering project analyzing 6 weeks of real-world public transport data from 133 Berlin stations using PostgreSQL and PySpark.
 
+## Overview
+
+This project processes data from Berlin's public transport system collected between September and October 2025. The dataset includes timetable information collected every hour and disruption data (delays, cancellations) collected every 15 minutes from 133 stations across Berlin.
+
+I built two separate ETL pipelines to handle this data:
+
+1. A PostgreSQL-based pipeline with a star schema design for relational analysis
+2. A PySpark pipeline for large-scale distributed processing
+
+## What I Built
+
+### PostgreSQL Data Warehouse
+
+I designed a star schema with one fact table for train movements and multiple dimension tables for stations, trains, and time information. The ETL pipeline parses thousands of XML and JSON files and loads them into PostgreSQL.
+
+The pipeline handles:
+- Station metadata from JSON files
+- Timetable data collected hourly
+- Disruption data collected every 15 minutes
+- Proper timestamp parsing and timezone handling
+
+I also wrote SQL queries to answer questions like:
+- Finding the nearest station to given coordinates
+- Calculating average delays per station
+- Counting canceled trains during specific time periods
+
+### PySpark Pipeline
+
+For large-scale processing, I built a PySpark job that reads all the XML files, extracts relevant information, and stores everything in Parquet format with time-based partitioning.
+
+Using this Parquet dataset, I implemented queries to:
+- Calculate average daily delays per station over the entire collection period
+- Find the average number of departures during peak hours (7-9 AM and 5-7 PM)
+
+## Technologies Used
+
+- PostgreSQL for relational data warehousing
+- PySpark for distributed data processing
+- Python for ETL pipeline development
+- SQL for analytical queries
+- Parquet for optimized data storage
+
+## Dataset Details
+
+- Time period: September 2 to October 15, 2025 (6 weeks)
+- Number of stations: 133 across Berlin
+- Timetable files: Collected hourly at HH:01
+- Disruption files: Collected every 15 minutes
+- Data sources: Deutsche Bahn API marketplace
+
+## How to Run
+
+### PostgreSQL Pipeline
+
+Navigate to the postgres_etl folder:
+
+```bash
+cd postgres_etl/
+
+pip install -r requirements.txt
+
+psql -U postgres -f schema.sql
+
+python etl_pipeline.py --data-path /path/to/data
+
+psql -U postgres -d transport_db -f queries/query_2.1.sql
+```
+
+### PySpark Pipeline
+
+Navigate to the spark_etl folder:
+
+```bash
+cd spark_etl/
+
+pip install pyspark
+
+python spark_etl.py
+
+python average_delay_query.py
+
+python peak_hours_query.py
+```
+
+## Example Queries
+
+Finding the nearest station to specific coordinates:
+
+```sql
+SELECT station_name, 
+       calculate_distance(52.5200, 13.4050, latitude, longitude) as distance
+FROM dim_stations
+ORDER BY distance LIMIT 1;
+```
+
+Calculating average delay for a specific station:
+
+```sql
+SELECT s.station_name, AVG(f.delay_minutes) as avg_delay
+FROM fact_train_movements f
+JOIN dim_stations s ON f.station_id = s.station_id
+WHERE s.station_name = 'Berlin Hauptbahnhof'
+GROUP BY s.station_name;
+```
 
 ## Project Structure
 
-- part1_postgres_etl: ETL pipeline using PostgreSQL (Task 1)
-- part3_spark_etl: ETL pipeline using Apache Spark (Task 3)
+The postgres_etl folder contains the star schema definition, Python ETL code, and SQL queries for analysis.
 
-## Prerequisites
-- Docker >= 20.10 (tested with 29.1.4)
-- Docker Compose plugin >= 2.29 (tested with v2.29.2)
-- Python >= 3.13
+The spark_etl folder contains the PySpark script that generates the Parquet dataset and query scripts for analyzing delays and peak hour traffic.
 
-##  task1 : Postgres ETL pipline
+## Key Insights
 
-## task 1.1 
+Through this analysis, I discovered patterns in Berlin's public transport system:
+- Peak hours (7-9 AM and 5-7 PM) show significantly higher traffic
+- Certain stations experience consistently higher delays
+- The Parquet partitioning strategy reduced query execution time
 
-the starschema is available in  part1_postgres_etl/sql/star_schema.sql 
+## Technical Challenges
 
-## task 1.2 
-by the following commands, you can create fact table and dimention tables and load the data 
+Some interesting challenges I solved:
+- Parsing timestamps from folder names and XML attributes correctly
+- Handling missing or inconsistent data in the XML files
+- Designing a schema that efficiently handles both planned and actual train movements
+- Processing thousands of XML files with PySpark
 
-1. Navigate to the project directory:
+## Academic Context
 
-bash
+This project was completed as part of the Data Integration and Analytics course, demonstrating skills in data warehouse design, ETL development, and large-scale data processing with PySpark.
 
-cd part1_postgres_etl
+## Author
 
-docker compose build --no-cache
+Zahra Abdi
 
-docker compose up -d
+## Acknowledgments
 
-docker exec -w /app/src dbahn-etl python main.py
-
-## task 2 is availabe in provided documnet
-
-
-## patask 3: Spark Etl Pipeline
-
-## task 3.1
-
-cd ./part3_spark_etl
-
-python3 etl_main.py
-
-## task 3.2
-
-cd ./part3_spark_etl
-
-python3 etl_task_3.2.py
+Data provided by Deutsche Bahn (DB) API marketplace for educational purposes.
